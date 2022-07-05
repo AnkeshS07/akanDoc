@@ -153,7 +153,7 @@ const updateBlog = async function (req, res) {
             return res.status(404).send({ status: false, msg: "BLOG NOT FOUND!" });
         }
 
-        let uptoDateBlog = await blogModel.findOneAndUpdate({ _id: blogId }, { title, body, $addToSet: { subcategory: subcategory, tags: tags } }, { new: true });
+        let updatedBlog = await blogModel.findOneAndUpdate({ _id: blogId }, { title, body, $addToSet: { subcategory: subcategory, tags: tags } }, { new: true });
 
         let updated = await blogModel.findOneAndUpdate({ _id: blogId }, { $set: { isPublished: true, publishedAt: new Date() } }, { new: true })
 
