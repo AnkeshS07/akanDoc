@@ -1,56 +1,75 @@
 const jwt = require("jsonwebtoken");
-const blogModel = require("../models/blogModel");
-const mongoose = require('mongoose');
+const userModel = require("../models/userModel");
 
 //======================================================1st Middleware===================================================================//
 
-const authenticate = function (req, res, next) {
-    try {
-        let token = req.headers["X-api-key"];
-        if (!token) token = req.headers["x-api-key"];
-        if (!token) return res.status(404).send({ status: false, msg: "token must be present" });
-        console.log(token);
+// const authenticate = function (req, res, next) {
+//     try {
+//         let token = req.headers["X-api-key"]
+//         if (!token) token = req.headers["x-api-key"]
+//         if (!token) return res.status(404).send({ status: false, msg: "token must be present" })
+//         console.log(token)
 
-        let decodedToken = jwt.decode(token);
-        if (decodedToken) {
-            try {
-                jwt.verify(token, "group19-project1")
-                next()
-            }
-            catch (err) {
-                return res.status(400).send({ status: false, msg: err.message })
-            }
-        }
-        else return res.status(400).send({ status: false, msg: "token is invalid" });
+//         let decodedToken = jwt.decode(token);
+//         if (decodedToken) {
+//             try {
+//                 jwt.verify(token, "Z-Flix!@#%")
+//                 next()
+//             }
+//             catch (err) {
+//                 return res.status(400).send({ status: false, msg: err.message })
+//             }
+//         }
+//         else return res.status(400).send({ status: false, msg: "token is invalid" });
 
-    }
-    catch (err) {
-        console.log("This is the error:", err.message)
-        return res.status(500).send({ status: false, msg: err.message })
-    }
-}
-
-// //====================================================2nd Middleware=====================================================================//
+//     }
+//     catch (err) {
+//         console.log("This is the error:", err.message)
+//         return res.status(500).send({ status: false, msg: err.message })
+//     }
+// }    // decode the token //
+//====================================2nd Middleware=====================================================================//
 
 const authorise = async function (req, res, next) {
+  let token;
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith("Bearer")
+  ) {
     try {
-        let token = req.headers["x-api-key"];
-        let decodedToken = jwt.verify(token, "group19-project1");
-        let blogId = req.params.blogId
-        if (!mongoose.Types.ObjectId.isValid(blogId)) return res.status(400).send({ status: false, msg: "blogId is invalid!" })
-        let findBlogId = await blogModel.findById(blogId).select({ authorId: 1, _id: 0 })
-        if (!findBlogId) return res.status(400).send({ status: false, msg: "blogId is invalid!" })
-        let userLoggedIn = decodedToken.authorId
-        if (findBlogId.authorId != userLoggedIn) return res.status(400).send({ status: false, msg: "Author logged is not allowed to modify the requested author's blog data" })
-
-        next()
+      token = req.headers.authorization.split(" ")[1];
+      console.log(token)
+      const decoded = jwt.verify(token, "Z-Flix!@#%");
+      const id = decoded.userId;
+      console.log("iddddddd", id);
+      const user = await userModel.findById(id);
+      console.log(user);
+      if (user) {
+        req.user = user;
+        next();
+      } else {
+        res.status(401).json({
+          sucess: false,
+          message: "Not Authorized, Token Failed",
+        });
+      }
+    } catch (err) {
+      res.status(401).json({
+        sucess: false,
+        message: "Not Authorized, Token Failed",
+        message: err.message,
+      });
     }
-    catch (err) {
-        console.log("This is the error:", err.message)
-        return res.status(500).send({ status: false, msg: err.message })
-    }
-}
+  }
 
+  if (!token) {
+    res.status(401).json({
+      sucess: false,
+      massage: "Not Authorized To Access This Route",
+    });
+  }
+};
 //=========================================================================================================================================//
 
-module.exports = { authenticate, authorise }
+module.exports = { authorise };
+
