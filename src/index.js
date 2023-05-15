@@ -1,6 +1,7 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const route = require("./routes/userRoute.js");
+const multer=require('multer')
 const { default: mongoose } = require("mongoose");
 const Exception  = require('../src/exceptions/HTTPExceptionHandler.js');
 mongoose.set('strictQuery', true)

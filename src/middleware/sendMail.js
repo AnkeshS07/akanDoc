@@ -157,4 +157,53 @@ const verifySignUpOTP = async (req, res) => {
   }
 };
 
-module.exports = {signUpEmail ,verifySignUpOTP};
+
+const sendEmail = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ status: false, msg: 'Email address cannot be empty' });
+    }
+
+    const otp = Math.floor(1000 + Math.random() * 9000);
+    console.log(otp);
+
+    // Save the OTP to the user model or perform any other necessary operations
+
+    const transport = nodemailer.createTransport({
+      host: " mail.alcax.com", // Replace with the actual SMTP server hostname
+      port: 587, // Replace with the actual port number
+      secure: false,
+      auth: {
+        user: "smtp@alcax.com", // Replace with the actual username
+        pass: "1z&7wBOOP7tO", // Replace with the actual password
+      },
+    });
+
+    const mailOptions = {
+      from: "smtp@alcax.com", // Replace with the actual "from" email address
+      to: email,
+      subject: "Send OTP to your email",
+      text: `Your akanDoc OTP is: ${otp}. Please don't share it with anyone for your safety.`,
+    };
+
+    await transport.sendMail(mailOptions);
+    next();
+
+    res.status(200).json({
+      message: "Data is successfully saved, and the email is sent.",
+      status: 200,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(400).json({
+      message: "Data not saved or error occurred while sending the email.",
+      status: 400,
+    });
+  }
+};
+
+
+
+module.exports = {signUpEmail ,verifySignUpOTP,sendEmail};

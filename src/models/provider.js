@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-const userSchema = new mongoose.Schema(
+const ProviderSchema = new mongoose.Schema(
   {
     email: {
       type: String,
@@ -36,22 +36,42 @@ const userSchema = new mongoose.Schema(
       default: -1,
       expires: "2m",
     },
-    countryCode:{
-      type:String,
-      required:true
-    },
+  
     phone: {
       type: String,
       required:true,
+    },
+    countryCode:{
+type:String,
+required:true
     },
 
     isVerified:{
       type:Boolean,
       default:false
+    },
+    licensed:{
+        type:Boolean,
+        required:true
+      },
+    qualification:[{
+      type:String,
+      default:null
+    }],
+    specialization:[{
+      type:String,
+      default:null
+    }],
+     location:{
+      type:String,
+      default:null
+    },
+     bio:{
+      type:String,
+      default:null
     }
-   
   },
   { timestamps: true }
 );
 
-module.exports = mongoose.model("user", userSchema);
+module.exports = mongoose.model("provider", ProviderSchema);

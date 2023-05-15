@@ -1,25 +1,40 @@
 const jwt = require("jsonwebtoken");
 const fs=require('fs');
 const path=require('path')
-const userProfileModel = require("../models/userModel");
+const providerModel = require("../models/provider");
 const HttpResponse = require("../response/HttpResponse");
 const { sendOTP, generateOTP,sendUnAuthOTP } = require("../common/helper");
 //--------------------------------------------------------------------------------------------------------------------//
 const signUp = async(req, res, next)=>{
   try {
-    const { name,email, password ,phone,countryCode} = req.body;
+    const { name,email, password ,phone,countryCode,licensed} = req.body;
     console.log(typeof req.body.email)
    console.log(req.body)
+   if(!licensed){
+    return res.status(400).send({
+        "status": 500,
+        "data": {},
+        "message": "licensed is required."
+    })
+   }
+   if(!phone){
+    return res.status(400).send({
+        "status": 500,
+        "data": {},
+        "message": "phone is required."
+    })
+   }
     let OTP = generateOTP();
-    let newProfile = await userProfileModel.create({
+    let newProfile = await providerModel.create({
       name:name,
       email: email,
       password: password,
       otp: OTP,
       phone:phone,
-      countryCode:countryCode
+      countryCode:countryCode,
+      licensed:licensed
     });
-
+   newProfile.save()
     // To send verification OTP
 
     sendOTP(email, OTP, "register");
@@ -43,7 +58,7 @@ const signUp = async(req, res, next)=>{
 const loginUser = async (req, res,next)=> {
   try {
     const email=req.body.email
-        const user=await userProfileModel.findOne({email:email})
+        const user=await providerModel.findOne({email:email})
         if(user.password!==req.body.password){
           return res.status(400).send({status:false,msg:"Incorrect password"})
         }
@@ -83,7 +98,7 @@ const sendForgetOtp = async (req, res , next) => {
   try {
 
     const email=req.body.email
-        const user=await userProfileModel.findOne({email:email})
+        const user=await providerModel.findOne({email:email})
      
       let OTP = generateOTP();
       if(user){
@@ -110,7 +125,7 @@ const sendForgetOtp = async (req, res , next) => {
 const verifyOTP = async (req, res , next) => {
   try {
     const { email, otp } = req.body;
-    const user = await userProfileModel.findOne({ email });
+    const user = await providerModel.findOne({ email,otp });
     console.log(user)
     if(user.isVerified==false){
       let token = jwt.sign(
@@ -175,16 +190,16 @@ const forgetPass = async (req, res ,next) => {
    
     const { password, confirmNewPassword ,confirmPassword} = req.body;
 
-    const user = await userProfileModel.findOne({ email: req.user.email });
+    const user = await providerModel.findOne({ email: req.user.email });
 
     if (!user) {
-      return res.status(404).json({ status: false, message: "User not found" });
+      return res.status(404).json({ status: 404, message: "User not found" });
     }
 
     if (user.password !== password) {
       return res
         .status(400)
-        .json({ status: false, message: "Invalid old password" });
+        .json({ status: 400, message: "Invalid old password" });
     }
     user.password = confirmNewPassword;
     user.confirmPassword = null;
@@ -209,7 +224,7 @@ const updateProfile = async (req, res, next) => {
   try {
     console.log("fillle",req.file)
     const updateData = req.body;
-    const updatedUser = await userProfileModel.findByIdAndUpdate(
+    const updatedUser = await providerModel.findByIdAndUpdate(
       req.user._id,
       updateData,
       {
@@ -275,7 +290,7 @@ const getProfileImage = async (req, res, next) => {
 
 const getUser = async (req, res, next) => {
   try {
-    let user=await userProfileModel.findById({_id:req.user._id})
+    let user=await providerModel.findById({_id:req.user._id})
     if(user){
       return HttpResponse.apiResponse(
         res,

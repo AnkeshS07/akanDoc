@@ -21,6 +21,14 @@ const apiResponse = (resp, data, status, message) => {
   };
   return resp.status(status).json(response);
 };
+const apiResponseToken = (resp, token, status, message) => {
+  let response = {
+    status: status,
+    token: token,
+    message: message,
+  };
+  return resp.status(status).json(response);
+};
 
 const HTTP_CREATED = StatusCodes.CREATED;
 const HTTP_OK = StatusCodes.OK;
@@ -32,6 +40,7 @@ const HTTP_UNPROCESSABLE_ENTITY = StatusCodes.UNPROCESSABLE_ENTITY;
 const HTTP_INTERNAL_SERVER_ERROR = StatusCodes.INTERNAL_SERVER_ERROR;
 
 module.exports = {
+  apiResponseToken,
   apiResponse,
   HTTP_CREATED,
   HTTP_OK,
