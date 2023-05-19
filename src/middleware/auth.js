@@ -1,6 +1,9 @@
 const jwt = require("jsonwebtoken");
 const userModel = require("../models/userModel");
-const providerModel=require('../models/provider')
+const providerModel = require("../models/provider");
+const revokedTokenModel = require("../models/revokedModel");
+const userDeviceModel = require("../models/user_devices");
+
 //======================================================1st Middleware===================================================================//
 
 // const authenticate = function (req, res, next) {
@@ -29,46 +32,49 @@ const providerModel=require('../models/provider')
 //     }
 // }    // decode the token //
 //====================================2nd Middleware=====================================================================//
-
 const authorise = async function (req, res, next) {
   let token;
-  if (
-    req.headers.authorization &&
-    req.headers.authorization.startsWith("Bearer")
-  ) {
+
+  if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
     try {
       token = req.headers.authorization.split(" ")[1];
-      console.log(token)
       const decoded = jwt.verify(token, "AKANDOC!@#%");
       const id = decoded.userId;
-      console.log("iddddddd", id);
-      const user = await userModel.findById(id);
-      console.log(user);
-      if (user) {
-        req.user = user;
-        next();
-      } else {
+      const deviceId = req.headers.device_id;
+
+      // Check if token exists in the database for the current provided device
+      const checkIfExist = await userModel.findOne({
+        _id: id,
+        device_id: deviceId,
+        "device_info.device_id": deviceId,
+        "device_info.jwt_token": token,
+      });
+
+      if (!checkIfExist || checkIfExist.jwt_token !== null) {
         res.status(401).json({
-          sucess: false,
-          message: "Not Authorized, Token Failed",
+          status: 401,
+          message: "Unauthorized",
         });
+        return;
       }
+
+      req.checkIfExist = checkIfExist;
+      next();
     } catch (err) {
       res.status(401).json({
-        sucess: false,
+        status: 401,
         message: "Not Authorized, Token Failed",
-        message: err.message,
+        error: err.message,
       });
     }
-  }
-
-  if (!token) {
+  } else {
     res.status(401).json({
-      sucess: false,
-      massage: "Not Authorized To Access This Route",
+      status: 401,
+      message: "Not Authorized, Missing Token",
     });
   }
 };
+
 const authoriseProvider = async function (req, res, next) {
   let token;
   if (
@@ -77,38 +83,53 @@ const authoriseProvider = async function (req, res, next) {
   ) {
     try {
       token = req.headers.authorization.split(" ")[1];
-      console.log(token)
       const decoded = jwt.verify(token, "AKANDOC!@#%");
       const id = decoded.userId;
-      console.log("iddddddd", id);
-      const user = await providerModel.findById(id);
-      console.log(user);
+      const deviceId = req.headers.device_id;
+
+      const user = await providerModel.findOne({
+        _id: id,
+        
+      });
+console.log("userrrrrrrrrr",user)
       if (user) {
-        req.user = user;
-        next();
+        const deviceIndex = user.device_info.findIndex(
+          (device) => device.device_id === deviceId
+        );
+        console.log("deviceIndex",deviceIndex)
+
+        if (deviceIndex !== -1 && user.device_info[deviceIndex].jwt_token !== null) {
+          req.user = user;
+          req.token = token;
+          next();
+        } else {
+          res.status(401).json({
+            status: 401,
+            message: "Not Authorized",
+          });
+        }
       } else {
         res.status(401).json({
-          sucess: false,
-          message: "Not Authorized, Token Failed",
+          status: 401,
+          message: "Not Authorized",
         });
       }
     } catch (err) {
       res.status(401).json({
-        sucess: false,
+        status: 401,
         message: "Not Authorized, Token Failed",
         message: err.message,
       });
     }
-  }
-
-  if (!token) {
+  } else {
     res.status(401).json({
-      sucess: false,
-      massage: "Not Authorized To Access This Route",
+      status: 401,
+      message: "Not Authorized, Missing Token",
     });
   }
-}
+};
+
+
 //=========================================================================================================================================//
 
-module.exports = { authorise ,authoriseProvider};
-
+module.exports = { authorise, authoriseProvider };

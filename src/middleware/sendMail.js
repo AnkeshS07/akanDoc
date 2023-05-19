@@ -1,5 +1,6 @@
 const nodemailer = require("nodemailer");
 const userModel = require("../models/userModel");
+const providerModel=require('../models/provider')
 const jwt = require("jsonwebtoken");
 // const sendEmail = async (req, res) => {
 //   try {
@@ -50,16 +51,18 @@ const jwt = require("jsonwebtoken");
 // };
 
 
-const signUpEmail = async (req, res,next) => {
+const resendEmailOtp = async (req, res,next) => {
   try {
     const userData = req.body.email;
+    const findUser=await userModel.findOne({email:userData})
     console.log(userData)
     if (userData==undefined){
- return res.status(400).send({status:false,msg:'email con not be empty'})
+ return res.status(400).send({status:false,msg:'email can not be empty'})
     }
+  
     const otp = Math.floor(1000 + Math.random() * 9000);
 
-    let user = await userModel.findOne({ email: userData });
+    let user = await userModel.findOne({ email: userData ,password:findUser.password,device_id:req.headers.device_id});
       console.log(user,"user")
 
     if (user) {
@@ -75,7 +78,7 @@ const signUpEmail = async (req, res,next) => {
         from: "forzflix@gmail.com",
         to: userData,
         subject: "Send OTP to your email",
-        text: `Your Zflix OTP is: ${otp}. Please don't share it with anyone for your safety.`,
+        text: `Your AkanDoc OTP is: ${otp}. Please don't share it with anyone for your safety.`,
       };
       console.log(mailoption)
       transport.sendMail(mailoption); 
@@ -83,9 +86,46 @@ const signUpEmail = async (req, res,next) => {
       user.save()
       console.log(user)
       
-      next()
+      return res.status(200).send({
+        status:200,
+        data:{user},
+        message:"Otp resend Success"
+      })
+ 
+    }else{
+      return res.status(400).send({
+        status:400,
+        data:{},
+        message:"Invalid details"
+      })
+    }
+  } catch (error) {
+    console.log(error);
+    res.status(400).json({
+      message: "Data not saved.",
+      status: 400,
+    });
+  }
+};
+const resendProviderEmailOtp = async (req, res,next) => {
+  try {
+    const userData = req.body.email;
+    const findUser=await providerModel.findOne({email:userData,'device_info.device_id':req.headers.device_id})
+    if(!findUser){
+      return res.status(400).send({status:400,message:'User Not Found'})
 
-    }else if(user==null){
+    }
+    console.log(userData)
+    if (userData==undefined){
+ return res.status(400).send({status:400,message:'email can not be empty'})
+    }
+  
+    const otp = Math.floor(1000 + Math.random() * 9000);
+
+    let user = await providerModel.findOne({ email: userData ,password:findUser.password});
+      console.log(user,"user")
+
+    if (user) {
       const transport = nodemailer.createTransport({
         service: "gmail",
         auth: {
@@ -98,15 +138,21 @@ const signUpEmail = async (req, res,next) => {
         from: "forzflix@gmail.com",
         to: userData,
         subject: "Send OTP to your email",
-        text: `Your Zflix SingUp OTP is: ${otp}. Please don't share it with anyone for your safety.`,
+        text: `Your AkanDoc OTP is: ${otp}. Please don't share it with anyone for your safety.`,
       };
-     console.log(mailoption)
-      transport.sendMail(mailoption);
-      req.otp=otp
-      next()
-
+      console.log(mailoption)
+      transport.sendMail(mailoption); 
+      user.otp=otp
+      user.save()
+      console.log(user)
+      
+      return res.status(200).send({
+        status:200,
+        data:{user},
+        message:"Otp resend Success"
+      })
+ 
     }
-  
   } catch (error) {
     console.log(error);
     res.status(400).json({
@@ -206,4 +252,4 @@ const sendEmail = async (req, res, next) => {
 
 
 
-module.exports = {signUpEmail ,verifySignUpOTP,sendEmail};
+module.exports = {resendEmailOtp ,resendProviderEmailOtp,verifySignUpOTP,sendEmail};

@@ -53,23 +53,41 @@ const handler = (err, req, res, next) => {
  * @param {*} next
  * @returns
  */
+// const validation = (req, res, next) => {
+//   console.log('test');
+
+//   let errors = validationResult(req);
+//   if (!errors.isEmpty()) {
+//     let message = errors.array()[0].msg || "Unprocessable entity.";
+
+//     return HttpResponse.apiResponse(
+//       res,
+//       errors.array(),
+//       HttpResponse.HTTP_UNPROCESSABLE_ENTITY,
+//       message
+//     );
+//   }
+//   next();
+// };
 const validation = (req, res, next) => {
-  console.log('test');
-
-  let errors = validationResult(req);
+  const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    let message = errors.array()[0].msg || "Unprocessable entity.";
+    const errorObject = {};
+    errors.array().forEach((error) => {
+      errorObject[error.param] = error.msg;
+    });
 
+    const message = 'Unprocessable entity.';
     return HttpResponse.apiResponse(
       res,
-      errors.array(),
+      errorObject,
       HttpResponse.HTTP_UNPROCESSABLE_ENTITY,
       message
     );
   }
+
   next();
 };
-
 
 module.exports = {
   handler,

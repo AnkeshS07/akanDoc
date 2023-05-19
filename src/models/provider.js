@@ -42,8 +42,7 @@ const ProviderSchema = new mongoose.Schema(
       required:true,
     },
     countryCode:{
-type:String,
-required:true
+   type:String
     },
 
     isVerified:{
@@ -52,24 +51,54 @@ required:true
     },
     licensed:{
         type:Boolean,
-        required:true
+        default:false
       },
-    qualification:[{
+    qualification:{
       type:String,
-      default:null
-    }],
-    specialization:[{
-      type:String,
-      default:null
-    }],
-     location:{
-      type:String,
-      default:null
+      enum: ["mbbs", "phd", "pgi",null],
+      default:null,
+      required:false
     },
+    specialization: {
+      type: String,
+      enum: ["Specialization1", "Specialization2", "Specialization3",null],
+      default: null,
+      required:false
+
+    },
+    location: {
+        type: {
+          type: String,
+          enum: ["Point"],
+          required: true,
+        },
+        coordinates: {
+          type: [Number],
+          required: true,
+        }
+      },
      bio:{
       type:String,
       default:null
-    }
+    },
+    device_info:[{
+      device_id: { //header
+        type: String,
+        require:true
+      },
+      device_token : {
+        type: String,
+       default:null
+      },
+      jwt_token: {
+        type: String,
+        default:null
+      },
+      device_type:{
+        type:String,
+        default:null
+      }
+    }]
   },
   { timestamps: true }
 );

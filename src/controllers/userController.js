@@ -4,6 +4,7 @@ const path=require('path')
 const userProfileModel = require("../models/userModel");
 const HttpResponse = require("../response/HttpResponse");
 const { sendOTP, generateOTP,sendUnAuthOTP } = require("../common/helper");
+const revokedTokenModel = require('../models/revokedModel');
 //--------------------------------------------------------------------------------------------------------------------//
 const signUp = async(req, res, next)=>{
   try {
@@ -14,12 +15,19 @@ const signUp = async(req, res, next)=>{
     let newProfile = await userProfileModel.create({
       name:name,
       email: email,
+    
       password: password,
       otp: OTP,
       phone:phone,
-      countryCode:countryCode
+      countryCode:countryCode,
+      device_info: [{
+        device_id: req.headers.device_id,
+        device_token: null,
+        jwt_token: null,
+        device_type: null
+      }],
     });
-
+    newProfile.save()
     // To send verification OTP
 
     sendOTP(email, OTP, "register");
@@ -40,64 +48,101 @@ const signUp = async(req, res, next)=>{
 
 //---------------------------------------------------------------------------------------------------------------//
 
-const loginUser = async (req, res,next)=> {
+const loginUser = async (req, res, next) => {
   try {
-    const email=req.body.email
-        const user=await userProfileModel.findOne({email:email})
-        if(user.password!==req.body.password){
-          return res.status(400).send({status:false,msg:"Incorrect password"})
-        }
-       if (user.isVerified!=true) {
-    
-      let OTP = generateOTP();
-      sendUnAuthOTP(email, OTP, "login");
-       user.otp=OTP
-       user.save()
+    const email = req.body.email;
+    const user = await userProfileModel.findOne({
+      email: email   
+    });
+
+    if (!user || user == null) {
       return HttpResponse.apiResponse(
         res,
         {},
-        HttpResponse.HTTP_UNAUTHORIZED,
-        "Your account is not verified, we sent an verification code to your registered email, please verify."
+        HttpResponse.HTTP_NOT_FOUND,
+        "No user found"
       );
     }
 
-    let token = jwt.sign(
-      {
-        userId: user._id.toString(),
-        project: "AKANDOC",
-        iat: Math.floor(Date.now() / 1000),
-        exp: Math.floor(Date.now() / 1000) + 10 * 60 * 60,
-      },
-      "AKANDOC!@#%"
-    );
 
-    return res.status(201).send({ status: true, token: token ,data:user});
+    if (user.password !== req.body.password) {
+      return res.status(400).send({ status: false, msg: "Incorrect password" });
+    }
+
+    if (user.isVerified != true) {
+      let OTP = generateOTP();
+      sendUnAuthOTP(email, OTP, "login");
+      user.otp = OTP;
+      user.save();
+
+      return HttpResponse.apiResponse(
+        res,
+        user,
+        HttpResponse.HTTP_OK,
+        "Your account is not verified, we sent a verification code to your registered email, please verify."
+      );
+    } else {
+      let token = jwt.sign(
+        {
+          userId: user._id.toString(),
+          project: "AKANDOC",
+          iat: Math.floor(Date.now() / 1000),
+          exp: Math.floor(Date.now() / 1000) + 10 * 60 * 60,
+        },
+        "AKANDOC!@#%"
+      );
+      
+     let user1= await userProfileModel.findByIdAndUpdate(
+        { _id: user._id },
+        { $set: { jwt_token: token } },
+        {new:true}
+      );
+     
+      return res.status(200).send({status:200,data:user1,token:user1.jwt_token,message: "Login success"})
+      // return HttpResponse.apiResponse(
+      //   res,
+      //   { token },
+      //   HttpResponse.HTTP_OK,
+      //   "Login success"
+      // );
+    }
   } catch (err) {
     err.statusCode = HttpResponse.HTTP_INTERNAL_SERVER_ERROR;
     next(err);
   }
 };
 
+;
+
 //--------------------------------------------------------------------------------------------------------------------//
 const sendForgetOtp = async (req, res , next) => {
   try {
 
     const email=req.body.email
-        const user=await userProfileModel.findOne({email:email})
-     
+        const user=await userProfileModel.findOne({email:email,device_id:req.headers.device_id})
+         console.log("user",user)
       let OTP = generateOTP();
       if(user){
         sendUnAuthOTP(email, OTP, "forgotPass");
         user.otp=OTP
         user.save()
-      }
+      
       
       return HttpResponse.apiResponse(
         res,
-        {},
+        user,
         HttpResponse.HTTP_OK,
         "we sent an verification code to your registered email, please verify."
       );
+      }else{
+          
+      return HttpResponse.apiResponse(
+        res,
+        {},
+        HttpResponse.HTTP_UNPROCESSABLE_ENTITY,
+        "No user found"
+      );
+      }
 
   } catch (err) {
     err.statusCode = HttpResponse.HTTP_INTERNAL_SERVER_ERROR;
@@ -110,8 +155,12 @@ const sendForgetOtp = async (req, res , next) => {
 const verifyOTP = async (req, res , next) => {
   try {
     const { email, otp } = req.body;
-    const user = await userProfileModel.findOne({ email });
-    console.log(user)
+    const user = await userProfileModel.findOne({ email , otp,
+      "device_info.device_id": req.headers.device_id,});
+console.log("userrrrrrrrrrrr",user)
+if(!user){
+  return res.status(404).send({status:404,data:{},message:"User Not Found"})
+}
     if(user.isVerified==false){
       let token = jwt.sign(
         {
@@ -124,7 +173,15 @@ const verifyOTP = async (req, res , next) => {
       );
       user.otp = -1;
       user.isVerified = true;
+      user.device_info = [{
+        device_id: req.headers.device_id,
+        device_token: null,
+        jwt_token: token,
+        device_type: null,
+      }];
       user.save();
+      console.log("user")
+
       return res.status(200).send(
        { status:200,
         data:user,
@@ -132,35 +189,29 @@ const verifyOTP = async (req, res , next) => {
         message:"OTP verified Successfull"}
       );
   
-    }else if(user.isVerified==true && user.otp==otp && otp!=-1){
-      let token = jwt.sign(
-        {
-          userId: user._id.toString(),
-          project: "AkANDOC",
-          iat: Math.floor(Date.now() / 1000),
-          exp: Math.floor(Date.now() / 1000) + 10 * 60 * 60,
-        },
-        "AKANDOC!@#%"
-      );
-      user.otp = -1;
-      user.isVerified = true;
-      user.save();
-      return res.status(200).send(
-       { 
-        status:200,
-        token:token,
-        data:user,
-        message:"OTP verified Successfull"
-      }
-      );
     }
   else{
+    const user = await userProfileModel.findOne({ email ,device_id:req.headers.device_id});
+   if(user!=null && user.otp===otp&&user.device_info[0].device_id === req.headers.device_id){
+   
+      let user1= await userProfileModel.updateOne(
+        { _id: user._id },
+        { $set: { otp: -1 } },{new:true}
+      );
+      return res.status(200).send(
+        { status:200,
+         data:{},
+         message:"OTP verified Successfull"}
+       );
+  }else{
     return HttpResponse.apiResponse(
       res,
       {},
-      HttpResponse.HTTP_UNPROCESSABLE_ENTITY,
-      "Invalid Otp"
+      HttpResponse.HTTP_NOT_FOUND,
+      "user not found"
     );
+  }
+    
    }
     
   } catch (err) {
@@ -175,23 +226,23 @@ const forgetPass = async (req, res ,next) => {
    
     const { password, confirmNewPassword ,confirmPassword} = req.body;
 
-    const user = await userProfileModel.findOne({ email: req.user.email });
+    const user = await userProfileModel.findOne({ email: req.checkIfExist.email,device_id:req.headers.device_id });
 
     if (!user) {
-      return res.status(404).json({ status: false, message: "User not found" });
+      return res.status(404).json({ status: 404,data:{}, message: "User not found" });
     }
 
     if (user.password !== password) {
       return res
         .status(400)
-        .json({ status: false, message: "Invalid old password" });
+        .json({ status: 400, data:{},message: "Invalid old password" });
     }
     user.password = confirmNewPassword;
     user.confirmPassword = null;
     await user.save();
     return HttpResponse.apiResponse(
       res,
-      {},
+      user,
       HttpResponse.HTTP_OK,
       "Password reset successfully"
     );
@@ -203,46 +254,88 @@ const forgetPass = async (req, res ,next) => {
     next(err);
   }
 };
+//--------------------------------------------------update new pass--------------------------------------------------------//
+const newPassword = async (req, res ,next) => {
+  try {
+   
+    const { newPassword ,confirmNewPassword} = req.body;
+  if(!newPassword){
+    return HttpResponse.apiResponse(
+      res,
+      {},
+      HttpResponse.HTTP_UNPROCESSABLE_ENTITY,
+      "Plase enter new password"
+    );
+  }
+    const user = await userProfileModel.findOne({ email: req.checkIfExist.email ,device_id:req.headers.device_id});
+
+    if (!user) {
+      return res.status(404).json({ status: 404,data:{}, message: "User not found" });
+    }
+   if(newPassword===confirmNewPassword){
+    user.password = newPassword;
+    user.confirmPassword = null;
+    await user.save();
+    return HttpResponse.apiResponse(
+      res,
+      {},
+      HttpResponse.HTTP_OK,
+      "Password reset successfully"
+    );
+   }else{
+    return HttpResponse.apiResponse(
+      res,
+      user,
+      HttpResponse.HTTP_UNPROCESSABLE_ENTITY,
+      "Password does not match"
+    );
+   }
+   
+    // return res
+    //   .status(200)
+    //   .json({ status: true, message: "Password reset successfully" });
+  } catch (err) {
+    err.statusCode = HttpResponse.HTTP_INTERNAL_SERVER_ERROR;
+    next(err);
+  }
+};
+
 //-----------------------------------------------------------------------------------------------------------------------//
 
 const updateProfile = async (req, res, next) => {
   try {
     console.log("fillle",req.file)
     const updateData = req.body;
-    const updatedUser = await userProfileModel.findByIdAndUpdate(
-      req.user._id,
-      updateData,
-      {
-        new: true,
+    // const user=await userProfileModel.findOne({email:req.checkIfExist.email,device_id:req.headers.device_id})
+    if(updateData){
+      const updatedUser = await userProfileModel.findByIdAndUpdate(
+        req.checkIfExist._id,
+        updateData,
+        {
+          new: true,
+        }
+      );
+  
+      if (req.file) {
+        updatedUser.userProfile = req.file.filename
       }
-    );
-
-    if (req.file) {
-      updatedUser.userProfile = req.file.filename
-    }
-
-    await updatedUser.save();
-
-    if (!updatedUser) {
+  
+      await updatedUser.save();
+      //return res.status(200).send({status:200,data:{updatedUser},token:updatedUser.jwt_token,message:" "updated successfully""})
       return HttpResponse.apiResponse(
         res,
-        {},
-        HttpResponse.HTTP_NOT_FOUND,
-        "User not found"
+        updatedUser,
+        HttpResponse.HTTP_OK,
+        "updated successfully"
       );
-    
     }
-    return HttpResponse.apiResponse(
-      res,
-      updatedUser,
-      HttpResponse.HTTP_OK,
-      "updated successfully"
-    );
+  
+    
     
   } catch (err) {
     // Handle errors
     err.statusCode = HttpResponse.HTTP_INTERNAL_SERVER_ERROR;
-    next(err);
+    next(err.message);
   }
 };
 
@@ -275,7 +368,7 @@ const getProfileImage = async (req, res, next) => {
 
 const getUser = async (req, res, next) => {
   try {
-    let user=await userProfileModel.findById({_id:req.user._id})
+    let user=await userProfileModel.findById({_id:req.checkIfExist._id,device_id:req.headers.device_id})
     if(user){
       return HttpResponse.apiResponse(
         res,
@@ -307,5 +400,6 @@ module.exports = {
   verifyOTP,
   updateProfile,
   getProfileImage,
-  getUser
+  getUser,
+  newPassword
 };

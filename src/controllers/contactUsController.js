@@ -1,39 +1,96 @@
 const ContactUs=require('../models/contactUs')
 const nodemailer=require('nodemailer')
-const contactUs=async(req,res)=>{
+const HttpResponse = require("../response/HttpResponse");
+const contactUs=async(req,res,next)=>{
     try {
         const { email, subject, message } = req.body;
   
         const contact = new ContactUs({ email, subject, message });
-       if(req.user.email==email){
+       if(req.checkIfExist.email==email){
 
 await contact.save();
 const transport = nodemailer.createTransport({
           service: "gmail",
           auth: {
-            user: "forzflix@gmail.com",
-            pass: "ysgvwkfhfvpzupmy",
+            user: "ankeshsharma420@gmail.com",
+            pass: "qfwrikdqifdhkhyr",
           },
         });
 // Compose the email
 const mailOptions = {
-  from: req.user,
-  to: "forzflix@gmail.com",
+  from: req.checkIfExist.email,
+  to:"ankeshsharma420@gmail.com",
   subject: "New query from contact form",
-  text: `Email: ${email}\nSubject: ${subject}\nMessage: ${message}`,
+  html: `<h2>New Query from Contact Form</h2>
+         <p><strong>Email:</strong> ${email}</p>
+         <p><strong>Subject:</strong> ${subject}</p>
+         <p><strong>Message:</strong> ${message}</p>`
 };
+
 
 // Send the email
 await transport.sendMail(mailOptions);
 console.log(mailOptions)
-res.status(200).json({ message: "Query sent successfully" });
+return HttpResponse.apiResponse(
+  res,
+  {},
+  HttpResponse.HTTP_OK,
+  "Query sent successfully"
+);
 
        }else{
-        return res.status(404).send({status:false,msg:"No user with this email address"})
+        return HttpResponse.apiResponse(
+          res,
+          {},
+          HttpResponse.HTTP_NOT_FOUND,
+          "User not found"
+        );
        }
-           } catch (error) {
-        console.error(error)
-    }
+           } catch (err) {
+            err.statusCode = HttpResponse.HTTP_INTERNAL_SERVER_ERROR;
+            next(err);
+          }
 }
+const providerContactUs=async(req,res,next)=>{
+  try {
+      const { email, subject, message } = req.body;
+ console.log("proooo")
+      const contact = new ContactUs({ email, subject, message });
 
-module.exports={contactUs}
+await contact.save();
+const transport = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+          user: "ankeshsharma420@gmail.com",
+          pass: "qfwrikdqifdhkhyr",
+        },
+      });
+// Compose the email
+const mailOptions = {
+from: email,
+to:"ankeshsharma420@gmail.com",
+subject: "New query from contact form",
+html: `<h2>New Query from Contact Form</h2>
+       <p><strong>Email:</strong> ${email}</p>
+       <p><strong>Subject:</strong> ${subject}</p>
+       <p><strong>Message:</strong> ${message}</p>`
+};
+
+
+// Send the email
+await transport.sendMail(mailOptions);
+console.log(mailOptions)
+return HttpResponse.apiResponse(
+res,
+{},
+HttpResponse.HTTP_OK,
+"mail sent successfully"
+);
+
+    
+         } catch (err) {
+          err.statusCode = HttpResponse.HTTP_INTERNAL_SERVER_ERROR;
+          next(err);
+        }
+}
+module.exports={contactUs,providerContactUs}

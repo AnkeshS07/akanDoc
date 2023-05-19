@@ -48,6 +48,11 @@ const sendUnAuthOTP = (toEmail, OTP, type = 'login')=>{
           subject = "Forgot Password"
           body = `Your Zflix forgot password OTP is: ${OTP}. Please don't share it with anyone for your safety.`
           break;
+           
+      case 'updatePhone':
+        subject = "Update Phone"
+        body = `Your AkanDoc update Phone OTP is: ${OTP}. Please don't share it with anyone for your safety.`
+        break;
   
       default:
           break;
@@ -101,5 +106,7 @@ const sendMail = (toEmail, subject, body) => {
   console.log(mailoption)
   transport.sendMail(mailoption);
 };
+
+
 
 module.exports = {sendOTP, sendMail, generateOTP,sendUnAuthOTP,sendPassForgotOTP };

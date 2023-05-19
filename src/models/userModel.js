@@ -41,15 +41,31 @@ const userSchema = new mongoose.Schema(
       required:true
     },
     phone: {
-      type: String,
-      required:true,
+      type: String
     },
 
     isVerified:{
       type:Boolean,
       default:false
-    }
-   
+    },
+    device_info:[{
+      device_id: { //header
+        type: String,
+        require:true
+      },
+      device_token : {
+        type: String,
+       default:null
+      },
+      jwt_token: {
+        type: String,
+        default:null
+      },
+      device_type:{
+        type:String,
+        default:null
+      }
+    }]
   },
   { timestamps: true }
 );

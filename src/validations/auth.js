@@ -81,8 +81,8 @@ const signUpVerifyVaidation = [
     .not()
     .isEmpty()
     .custom(async (value, { req }) => {
-      const user = await userProfileModel.find({ otp: value });
-
+      const user = await userProfileModel.find({otp: value });
+     console.log(user)
       if (user.length === 0 || String(value) !== String(user[0].otp)) {
         throw new Error("Please enter a valid OTP");
       }
@@ -166,21 +166,31 @@ const contactUsVaidation = [
     .custom(async (value) => {
       const user = await userProfileModel.find({ email: value });
       if (user.length <= 0) {
-        throw new Error("Please Register Your E-mail Address");
+        throw new Error("Type your E-mail Address");
       }
     }),
-  body("otp")
+  body("subject")
+    .not()
+    .isEmpty(),
+    body("message")
+    .not()
+    .isEmpty(),
+];
+const providerContactUsVaidation = [
+  body("email")
+    .trim()
     .not()
     .isEmpty()
-    .custom(async (value, { req }) => {
-      const user = await userProfileModel.find({ otp: value });
-
-      if (user.length === 0 || String(value) !== String(user[0].otp)) {
-        throw new Error("Please enter a valid OTP");
-      }
-    }),
+    .normalizeEmail({ gmail_remove_dots: true })
+    .withMessage("please input E-mail Address")
+   ,
+  body("subject")
+    .not()
+    .isEmpty(),
+    body("message")
+    .not()
+    .isEmpty(),
 ];
-
 const providerRegisterValidation = [
   body("email", "Please enter a valid email")
     .not()
@@ -316,6 +326,16 @@ const validate = function (req, res, next) {
   if (!error.length) return next();
   res.status(400).send({ status: 400, msg: error[0].msg });
 };
+const profileUpdateProviderValidation = [
+  body('qualification')
+    .isIn(["mbbs", "phd", "pgi"])
+    .withMessage('Please select at least one qualification either mbbs or phd or pgi'),
+
+  body('specialization')
+  .isIn(["Specialization1", "Specialization2", "Specialization3"])
+  .withMessage('Please select at least one specialization either Specialization1 or Specialization2 or Specialization3'),
+
+];
 
 module.exports = {
   registerVaidation,
@@ -330,5 +350,7 @@ module.exports = {
   signUpProviderVerifyVaidation,
   validateProviderLogin,
   forgotPassOtpProviderVaidation,
-  verifyPassOtpProviderValidation
+  verifyPassOtpProviderValidation,
+  profileUpdateProviderValidation,
+  providerContactUsVaidation
 };
