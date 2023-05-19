@@ -216,7 +216,7 @@ router.post(
 );
 //-------------------------------------------contact us--------------------------------------------------------------------//
 router.post(
-  "/api/v1/contactUs",
+  "/api/v1/user/contactUs",
   authoriseUser.authorise,
   contactUsVaidation,
   validation,
