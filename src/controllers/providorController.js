@@ -276,8 +276,7 @@ const forgetPass = async (req, res, next) => {
     const { password, confirmNewPassword, confirmPassword } = req.body;
 
     const user = await providerModel.findOne({
-      email: req.user.email,
-      device_id: req.headers.device_id,
+      email: req.user.email
     });
 
     if (!user) {
@@ -316,8 +315,7 @@ const newPassword = async (req, res, next) => {
       );
     }
     const user = await providerModel.findOne({
-      email: req.user.email,
-      device_id: req.headers.device_id,
+      email: req.user.email
     });
 
     if (!user) {
@@ -422,8 +420,7 @@ const getProfileImage = async (req, res, next) => {
 const getProvider = async (req, res, next) => {
   try {
     let user = await providerModel.findById({
-      _id: req.user._id,
-      device_id: req.headers.device_id,
+      _id: req.user._id
     });
     if (user) {
       return HttpResponse.apiResponse(

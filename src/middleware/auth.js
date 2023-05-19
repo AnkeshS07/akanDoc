@@ -41,25 +41,34 @@ const authorise = async function (req, res, next) {
       const decoded = jwt.verify(token, "AKANDOC!@#%");
       const id = decoded.userId;
       const deviceId = req.headers.device_id;
-
+console.log(deviceId)
       // Check if token exists in the database for the current provided device
       const checkIfExist = await userModel.findOne({
-        _id: id,
-        device_id: deviceId,
-        "device_info.device_id": deviceId,
-        "device_info.jwt_token": token,
+        _id: id
       });
-
-      if (!checkIfExist || checkIfExist.jwt_token !== null) {
+  console.log(checkIfExist)
+      if (!checkIfExist) {
         res.status(401).json({
           status: 401,
           message: "Unauthorized",
         });
         return;
       }
+      const deviceIndex = checkIfExist.device_info.findIndex(
+        (device) => device.device_id === deviceId
+      );
+      console.log("deviceIndex",deviceIndex)
 
-      req.checkIfExist = checkIfExist;
-      next();
+      if (deviceIndex !== -1 && checkIfExist.device_info[deviceIndex].jwt_token !== null) {
+        req.checkIfExist = checkIfExist;
+        req.token = token;
+        next();
+      }else{
+       return res.status(401).json({
+          status: 401,
+          message: "login with your email and password"
+        });
+      }
     } catch (err) {
       res.status(401).json({
         status: 401,

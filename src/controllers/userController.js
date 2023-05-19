@@ -51,37 +51,39 @@ const signUp = async(req, res, next)=>{
 const loginUser = async (req, res, next) => {
   try {
     const email = req.body.email;
-    const user = await userProfileModel.findOne({
-      email: email   
-    });
+    const user = await userProfileModel.findOne({ email: email });
 
-    if (!user || user == null) {
-      return HttpResponse.apiResponse(
-        res,
-        {},
-        HttpResponse.HTTP_NOT_FOUND,
-        "No user found"
-      );
+    if (!user) {
+      return res.status(400).send({
+        status: 400,
+        data: {},
+        message: "Account does not exist with this credential",
+      });
     }
 
-
     if (user.password !== req.body.password) {
-      return res.status(400).send({ status: false, msg: "Incorrect password" });
+      return res.status(400).send({ status: 400,data:{}, message: "Incorrect password" });
     }
 
     if (user.isVerified != true) {
       let OTP = generateOTP();
       sendUnAuthOTP(email, OTP, "login");
       user.otp = OTP;
-      user.save();
+      await user.save();
 
-      return HttpResponse.apiResponse(
-        res,
-        user,
-        HttpResponse.HTTP_OK,
-        "Your account is not verified, we sent a verification code to your registered email, please verify."
-      );
-    } else {
+      return res.status(401).send({
+        status: 401,
+        data:{},
+        message:
+          "Your account is not verified, we sent a verification code to your registered email, please verify.",
+      });
+    }
+
+    const matchingDeviceInfo = user.device_info.find(
+      (info) => info.device_id === req.headers.device_id
+    );
+
+    if (matchingDeviceInfo) {
       let token = jwt.sign(
         {
           userId: user._id.toString(),
@@ -91,27 +93,47 @@ const loginUser = async (req, res, next) => {
         },
         "AKANDOC!@#%"
       );
-      
-     let user1= await userProfileModel.findByIdAndUpdate(
-        { _id: user._id },
-        { $set: { jwt_token: token } },
-        {new:true}
-      );
-     
-      return res.status(200).send({status:200,data:user1,token:user1.jwt_token,message: "Login success"})
-      // return HttpResponse.apiResponse(
-      //   res,
-      //   { token },
-      //   HttpResponse.HTTP_OK,
-      //   "Login success"
-      // );
+
+      matchingDeviceInfo.jwt_token = token;
+      await user.save();
+
+      return res.status(200).send({
+        status: 200,
+        data: user,
+        token: matchingDeviceInfo.jwt_token,
+        message:"login success"
+      });
     }
+
+    let token = jwt.sign(
+      {
+        userId: user._id.toString(),
+        project: "AKANDOC",
+        iat: Math.floor(Date.now() / 1000),
+        exp: Math.floor(Date.now() / 1000) + 10 * 60 * 60,
+      },
+      "AKANDOC!@#%"
+    );
+
+    user.device_info.push({
+      device_id: req.headers.device_id,
+      device_token: req.body.device_token,
+      device_type: req.body.device_type,
+      jwt_token: token,
+    });
+    await user.save();
+
+    return res.status(200).send({
+      status: 200,
+      data: user,
+      token: token,
+      message:"login Success"
+    });
   } catch (err) {
     err.statusCode = HttpResponse.HTTP_INTERNAL_SERVER_ERROR;
     next(err);
   }
 };
-
 ;
 
 //--------------------------------------------------------------------------------------------------------------------//
@@ -152,16 +174,15 @@ const sendForgetOtp = async (req, res , next) => {
 
 //-----------------------------------------------------------------------------------------------------------------//
 
-const verifyOTP = async (req, res , next) => {
+const verifyOTP = async (req, res, next) => {
   try {
     const { email, otp } = req.body;
-    const user = await userProfileModel.findOne({ email , otp,
-      "device_info.device_id": req.headers.device_id,});
-console.log("userrrrrrrrrrrr",user)
-if(!user){
-  return res.status(404).send({status:404,data:{},message:"User Not Found"})
-}
-    if(user.isVerified==false){
+    const user = await userProfileModel.findOne({ email, otp });
+    console.log("userrrrrrrrrrrr", user);
+    if (!user) {
+      return res.status(404).send({ status: 404, data: {}, message: "User Not Found" });
+    }
+    if (user.isVerified === false) {
       let token = jwt.sign(
         {
           userId: user._id.toString(),
@@ -173,52 +194,48 @@ if(!user){
       );
       user.otp = -1;
       user.isVerified = true;
-      user.device_info = [{
-        device_id: req.headers.device_id,
-        device_token: null,
-        jwt_token: token,
-        device_type: null,
-      }];
+      user.device_info = [
+        {
+          device_id: req.headers.device_id,
+          device_token: req.body.device_token,
+          jwt_token: token,
+          device_type: req.body.device_type,
+        },
+      ];
       user.save();
-      console.log("user")
+      console.log("user");
 
-      return res.status(200).send(
-       { status:200,
-        data:user,
-        token:token,
-        message:"OTP verified Successfull"}
-      );
-  
+      return res.status(200).send({
+        status: 200,
+        data: user,
+        token: token,
+        message: "OTP verified Successfully",
+      });
+    } else {
+      const deviceIndex = user.device_info.findIndex((device) => device.device_id === req.headers.device_id);
+      if (deviceIndex !== -1 && user.otp === otp) {
+        user.device_info[deviceIndex].jwt_token = null;
+        user.markModified('device_info');
+        await user.save();
+        return res.status(200).send({
+          status: 200,
+          data: {},
+          message: "OTP verified Successfully",
+        });
+      } else {
+        return res.status(404).send({
+          status: 404,
+          data: {},
+          message: "User not found or invalid OTP",
+        });
+      }
     }
-  else{
-    const user = await userProfileModel.findOne({ email ,device_id:req.headers.device_id});
-   if(user!=null && user.otp===otp&&user.device_info[0].device_id === req.headers.device_id){
-   
-      let user1= await userProfileModel.updateOne(
-        { _id: user._id },
-        { $set: { otp: -1 } },{new:true}
-      );
-      return res.status(200).send(
-        { status:200,
-         data:{},
-         message:"OTP verified Successfull"}
-       );
-  }else{
-    return HttpResponse.apiResponse(
-      res,
-      {},
-      HttpResponse.HTTP_NOT_FOUND,
-      "user not found"
-    );
-  }
-    
-   }
-    
   } catch (err) {
-    err.statusCode = HttpResponse.HTTP_INTERNAL_SERVER_ERROR;
+    err.statusCode = 500;
     next(err);
   }
 };
+
 
 //----------------------------------------------------------------------------------------------------------------//
 const forgetPass = async (req, res ,next) => {
@@ -226,7 +243,7 @@ const forgetPass = async (req, res ,next) => {
    
     const { password, confirmNewPassword ,confirmPassword} = req.body;
 
-    const user = await userProfileModel.findOne({ email: req.checkIfExist.email,device_id:req.headers.device_id });
+    const user = await userProfileModel.findOne({ email: req.checkIfExist.email});
 
     if (!user) {
       return res.status(404).json({ status: 404,data:{}, message: "User not found" });
@@ -267,7 +284,7 @@ const newPassword = async (req, res ,next) => {
       "Plase enter new password"
     );
   }
-    const user = await userProfileModel.findOne({ email: req.checkIfExist.email ,device_id:req.headers.device_id});
+    const user = await userProfileModel.findOne({ email: req.checkIfExist.email});
 
     if (!user) {
       return res.status(404).json({ status: 404,data:{}, message: "User not found" });
@@ -275,6 +292,7 @@ const newPassword = async (req, res ,next) => {
    if(newPassword===confirmNewPassword){
     user.password = newPassword;
     user.confirmPassword = null;
+    user.otp=null
     await user.save();
     return HttpResponse.apiResponse(
       res,
