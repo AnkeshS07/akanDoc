@@ -1,0 +1,7 @@
+bookingConfirmation
+bookingRejection
+bookingStart
+bookingEnd
+bookingRequest
+InsuranceReject
+BookingForword
