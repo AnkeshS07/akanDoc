@@ -1,0 +1,16 @@
+# dependencies
+node_modules/
+
+# build outputs
+frontend/dist/
+*.log
+
+# env
+.env
+.env.*
+
+# OS
+.DS_Store
+
+# uploads (binary assets)
+uploads/
