@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
-import { Button, Container, Paper, Stack, TextField, Typography, Alert } from '@mui/material'
+import { Button, Container, Paper, Stack, TextField, Typography } from '@mui/material'
 import { UserAPI } from '../../lib/api'
 import { useNavigate } from 'react-router-dom'
 

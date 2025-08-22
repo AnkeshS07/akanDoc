@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useForm } from 'react-hook-form'
+import { useForm, type SubmitHandler } from 'react-hook-form'
 import { Button, Container, Paper, Stack, TextField, Typography, FormControlLabel, Checkbox } from '@mui/material'
 import { ProviderAPI } from '../../lib/api'
 import { useNavigate } from 'react-router-dom'
@@ -12,9 +12,9 @@ const schema = z.object({
 	confirmPassword: z.string().min(6),
 	countryCode: z.string().min(1),
 	phone: z.string().min(6),
-	licensed: z.boolean().default(false),
-	latitude: z.preprocess((v) => Number(v), z.number()),
-	longitude: z.preprocess((v) => Number(v), z.number()),
+	licensed: z.boolean(),
+	latitude: z.coerce.number(),
+	longitude: z.coerce.number(),
 }).refine((d) => d.password === d.confirmPassword, { message: 'Passwords do not match', path: ['confirmPassword'] })
 
 type FormValues = z.infer<typeof schema>
@@ -31,9 +31,9 @@ type ProviderSignupPayload = {
 
 export default function ProviderSignup() {
 	const navigate = useNavigate()
-	const { register, handleSubmit, formState: { errors }, setError } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { licensed: false } })
+	const { register, handleSubmit, formState: { errors }, setError } = useForm<FormValues>({ resolver: zodResolver(schema) as any, defaultValues: { licensed: false } })
 
-	const onSubmit = async (values: FormValues): Promise<void> => {
+	const onSubmit: SubmitHandler<FormValues> = async (values) => {
 		const payload: ProviderSignupPayload = {
 			name: values.name,
 			email: values.email,
@@ -64,8 +64,8 @@ export default function ProviderSignup() {
 					<TextField label="Confirm Password" type="password" {...register('confirmPassword')} error={!!errors.confirmPassword} helperText={errors.confirmPassword?.message} />
 					<FormControlLabel control={<Checkbox {...register('licensed')} />} label="Licensed" />
 					<Stack direction="row" spacing={2}>
-						<TextField label="Latitude" {...register('latitude')} error={!!errors.latitude} helperText={errors.latitude?.message} />
-						<TextField label="Longitude" {...register('longitude')} error={!!errors.longitude} helperText={errors.longitude?.message} />
+						<TextField label="Latitude" {...register('latitude', { valueAsNumber: true })} error={!!errors.latitude} helperText={errors.latitude?.message} />
+						<TextField label="Longitude" {...register('longitude', { valueAsNumber: true })} error={!!errors.longitude} helperText={errors.longitude?.message} />
 					</Stack>
 					<Button onClick={handleSubmit(onSubmit)} variant="contained">Create account</Button>
 				</Stack>

@@ -1,4 +1,4 @@
-import React from 'react'
+import type { ReactElement } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom'
 import { useAuth } from './providers/AuthProvider'
 import UserLogin from './pages/auth/UserLogin'
@@ -8,7 +8,7 @@ import ProviderSignup from './pages/auth/ProviderSignup'
 import VerifyOtp from './pages/auth/VerifyOtp'
 import UserForgot from './pages/auth/UserForgot'
 
-function RequireAuth({ children }: { children: JSX.Element }) {
+function RequireAuth({ children }: { children: ReactElement }) {
 	const { token } = useAuth()
 	if (!token) return <Navigate to="/login" replace />
 	return children
