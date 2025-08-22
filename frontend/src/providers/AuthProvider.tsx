@@ -1,5 +1,6 @@
 import React from 'react';
-import { getAuthRole, getAuthToken, setAuth, clearAuth, AuthRole } from '../lib/auth';
+import { getAuthRole, getAuthToken, setAuth, clearAuth } from '../lib/auth';
+import type { AuthRole } from '../lib/auth';
 import { ProviderAPI, UserAPI } from '../lib/api';
 
 export type AuthState = {

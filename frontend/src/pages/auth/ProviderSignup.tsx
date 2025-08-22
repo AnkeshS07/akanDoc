@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
-import { Button, Container, Paper, Stack, TextField, Typography, Alert, FormControlLabel, Checkbox } from '@mui/material'
+import { Button, Container, Paper, Stack, TextField, Typography, FormControlLabel, Checkbox } from '@mui/material'
 import { ProviderAPI } from '../../lib/api'
 import { useNavigate } from 'react-router-dom'
 
@@ -12,28 +12,38 @@ const schema = z.object({
 	confirmPassword: z.string().min(6),
 	countryCode: z.string().min(1),
 	phone: z.string().min(6),
-	licensed: z.boolean(),
-	latitude: z.coerce.number(),
-	longitude: z.coerce.number(),
+	licensed: z.boolean().default(false),
+	latitude: z.preprocess((v) => Number(v), z.number()),
+	longitude: z.preprocess((v) => Number(v), z.number()),
 }).refine((d) => d.password === d.confirmPassword, { message: 'Passwords do not match', path: ['confirmPassword'] })
 
 type FormValues = z.infer<typeof schema>
 
+type ProviderSignupPayload = {
+	name: string;
+	email: string;
+	password: string;
+	phone: string;
+	countryCode: string;
+	licensed: boolean;
+	location: { type: 'Point'; coordinates: [number, number] };
+}
+
 export default function ProviderSignup() {
 	const navigate = useNavigate()
-	const { register, handleSubmit, formState: { errors }, setError, watch } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { licensed: false } })
+	const { register, handleSubmit, formState: { errors }, setError } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { licensed: false } })
 
-	const onSubmit = async (values: FormValues) => {
+	const onSubmit = async (values: FormValues): Promise<void> => {
+		const payload: ProviderSignupPayload = {
+			name: values.name,
+			email: values.email,
+			password: values.password,
+			phone: values.phone,
+			countryCode: values.countryCode,
+			licensed: values.licensed,
+			location: { type: 'Point', coordinates: [values.longitude, values.latitude] },
+		}
 		try {
-			const payload = {
-				name: values.name,
-				email: values.email,
-				password: values.password,
-				phone: values.phone,
-				countryCode: values.countryCode,
-				licensed: values.licensed,
-				location: { type: 'Point' as const, coordinates: [values.longitude, values.latitude] },
-			}
 			await ProviderAPI.signup(payload)
 			navigate('/provider/verify-otp', { state: { email: values.email, role: 'provider' } })
 		} catch (e: any) {

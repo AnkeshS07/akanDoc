@@ -1,5 +1,12 @@
+import React from 'react'
 import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom'
 import { useAuth } from './providers/AuthProvider'
+import UserLogin from './pages/auth/UserLogin'
+import ProviderLogin from './pages/auth/ProviderLogin'
+import UserSignup from './pages/auth/UserSignup'
+import ProviderSignup from './pages/auth/ProviderSignup'
+import VerifyOtp from './pages/auth/VerifyOtp'
+import UserForgot from './pages/auth/UserForgot'
 
 function RequireAuth({ children }: { children: JSX.Element }) {
 	const { token } = useAuth()
@@ -31,16 +38,16 @@ export default function App() {
 			<Routes>
 				<Route path="/" element={<Home />} />
 				{/* User auth */}
-				<Route path="/signup" element={<div />} />
-				<Route path="/verify-otp" element={<div />} />
-				<Route path="/login" element={<div />} />
-				<Route path="/forgot" element={<div />} />
+				<Route path="/signup" element={<UserSignup />} />
+				<Route path="/verify-otp" element={<VerifyOtp />} />
+				<Route path="/login" element={<UserLogin />} />
+				<Route path="/forgot" element={<UserForgot />} />
 				<Route path="/change-password" element={<RequireAuth><div /></RequireAuth>} />
 
 				{/* Provider auth */}
-				<Route path="/provider/signup" element={<div />} />
-				<Route path="/provider/verify-otp" element={<div />} />
-				<Route path="/provider/login" element={<div />} />
+				<Route path="/provider/signup" element={<ProviderSignup />} />
+				<Route path="/provider/verify-otp" element={<VerifyOtp />} />
+				<Route path="/provider/login" element={<ProviderLogin />} />
 				<Route path="/provider/forgot" element={<div />} />
 				<Route path="/provider/change-password" element={<RequireAuth><div /></RequireAuth>} />
 
