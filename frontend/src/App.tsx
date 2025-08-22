@@ -7,6 +7,11 @@ import UserSignup from './pages/auth/UserSignup'
 import ProviderSignup from './pages/auth/ProviderSignup'
 import VerifyOtp from './pages/auth/VerifyOtp'
 import UserForgot from './pages/auth/UserForgot'
+import Providers from './pages/Providers'
+import BookProvider from './pages/BookProvider'
+import Profile from './pages/Profile'
+import Contact from './pages/Contact'
+import { Layout } from './components/Layout'
 
 function RequireAuth({ children }: { children: ReactElement }) {
 	const { token } = useAuth()
@@ -19,6 +24,7 @@ function Home() {
 		<div style={{ padding: 24 }}>
 			<h2>AkanDoc</h2>
 			<nav style={{ display: 'flex', gap: 12 }}>
+				<Link to="/providers">Providers</Link>
 				<Link to="/login">Login</Link>
 				<Link to="/signup">User Signup</Link>
 				<Link to="/provider/login">Provider Login</Link>
@@ -35,29 +41,31 @@ function NotFound() {
 export default function App() {
 	return (
 		<BrowserRouter>
-			<Routes>
-				<Route path="/" element={<Home />} />
-				{/* User auth */}
-				<Route path="/signup" element={<UserSignup />} />
-				<Route path="/verify-otp" element={<VerifyOtp />} />
-				<Route path="/login" element={<UserLogin />} />
-				<Route path="/forgot" element={<UserForgot />} />
-				<Route path="/change-password" element={<RequireAuth><div /></RequireAuth>} />
+			<Layout>
+				<Routes>
+					<Route path="/" element={<Home />} />
+					{/* User auth */}
+					<Route path="/signup" element={<UserSignup />} />
+					<Route path="/verify-otp" element={<VerifyOtp />} />
+					<Route path="/login" element={<UserLogin />} />
+					<Route path="/forgot" element={<UserForgot />} />
+					<Route path="/change-password" element={<RequireAuth><div /></RequireAuth>} />
 
-				{/* Provider auth */}
-				<Route path="/provider/signup" element={<ProviderSignup />} />
-				<Route path="/provider/verify-otp" element={<VerifyOtp />} />
-				<Route path="/provider/login" element={<ProviderLogin />} />
-				<Route path="/provider/forgot" element={<div />} />
-				<Route path="/provider/change-password" element={<RequireAuth><div /></RequireAuth>} />
+					{/* Provider auth */}
+					<Route path="/provider/signup" element={<ProviderSignup />} />
+					<Route path="/provider/verify-otp" element={<VerifyOtp />} />
+					<Route path="/provider/login" element={<ProviderLogin />} />
+					<Route path="/provider/forgot" element={<div />} />
+					<Route path="/provider/change-password" element={<RequireAuth><div /></RequireAuth>} />
 
-				{/* App features */}
-				<Route path="/providers" element={<div />} />
-				<Route path="/book/:providerId" element={<RequireAuth><div /></RequireAuth>} />
-				<Route path="/profile" element={<RequireAuth><div /></RequireAuth>} />
-				<Route path="/contact" element={<RequireAuth><div /></RequireAuth>} />
-				<Route path="*" element={<NotFound />} />
-			</Routes>
+					{/* App features */}
+					<Route path="/providers" element={<Providers />} />
+					<Route path="/book/:providerId" element={<RequireAuth><BookProvider /></RequireAuth>} />
+					<Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
+					<Route path="/contact" element={<RequireAuth><Contact /></RequireAuth>} />
+					<Route path="*" element={<NotFound />} />
+				</Routes>
+			</Layout>
 		</BrowserRouter>
 	)
 }
